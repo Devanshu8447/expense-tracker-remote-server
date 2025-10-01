@@ -132,19 +132,21 @@
 
 # # No explicit mcp.run() call needed; MCP framework manages server startup and asyncio loop
 
+import nest_asyncio
+
+nest_asyncio.apply()
+
 from mcp.server.fastmcp import FastMCP
 import os
 import sqlite3
 import asyncio
 
-# Optional: Use nest_asyncio if needed for nested loops (workaround)
-# import nest_asyncio
-# nest_asyncio.apply()
-
 CATEGORIES_PATH = os.path.join(os.path.dirname(__file__), "categories.json")
 
+# Create FastMCP server instance
 mcp = FastMCP("ExpenseTracker", host="0.0.0.0", port=8000)
 
+# Global SQLite connection for in-memory DB to keep data across requests
 global_conn = sqlite3.connect(":memory:", check_same_thread=False)
 
 
@@ -165,14 +167,12 @@ def init_db():
     global_conn.commit()
 
 
-# Run init_db on startup asynchronously or ensure it runs safely
+# Async startup task to initialize DB
 async def startup():
-    # If init_db were an async function, you'd await it here
-    # Since it's sync, run it in thread executor or just call
     init_db()
 
 
-# Schedule startup initialization safely without restarting event loop
+# Schedule startup without conflicting event loops
 try:
     loop = asyncio.get_running_loop()
     asyncio.ensure_future(startup(), loop=loop)
@@ -278,4 +278,4 @@ def categories():
         return f.read()
 
 
-# No explicit mcp.run() call here; MCP runtime manages async loop and server startup
+# No explicit mcp.run() call here; MCP runtime manages the server start and event loop
